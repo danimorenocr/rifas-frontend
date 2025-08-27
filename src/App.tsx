@@ -5,14 +5,7 @@ import html2canvas from 'html2canvas';
 interface Participant {
   name: string;
   numbers: number[];
-  color: string;
 }
-
-const colors = [
-  '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6',
-  '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1',
-  '#14B8A6', '#F43F5E', '#8B5A2B', '#6B7280', '#7C3AED'
-];
 
 function App() {
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -35,10 +28,6 @@ function App() {
     return num.toString().padStart(3, '0');
   };
 
-  const getParticipantColor = (participantCount: number) => {
-    return colors[participantCount % colors.length];
-  };
-
   const handleNumberClick = (number: number) => {
     if (occupiedNumbers.has(number)) return;
 
@@ -58,9 +47,7 @@ function App() {
       setParticipants(data);
 
       const newOccupied = new Map<number, Participant>();
-      data.forEach((p: Participant, idx: number) => {
-        const color = getParticipantColor(idx);
-        p.color = color; // aseguramos que cada participante tenga color
+      data.forEach((p: Participant) => {
         p.numbers.forEach((n: number) => newOccupied.set(n, p));
       });
       setOccupiedNumbers(newOccupied);
@@ -211,7 +198,7 @@ function App() {
 
   const getNumberStyle = (number: number) => {
     if (selectedNumbers.includes(number)) {
-      return 'bg-blue-500 text-white border-blue-600';
+      return 'bg-green-500 text-white border-green-600';
     }
 
     const participant = occupiedNumbers.get(number);
@@ -263,7 +250,7 @@ function App() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Form Section */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg p-6 shadow-lg sticky top-4">
+            <div className="bg-white rounded-lg p-6 shadow-lg lg:sticky lg:top-4 max-h-[calc(100vh-2rem)] flex flex-col">
               <h2 className="text-xl font-semibold text-gray-800 mb-4">Agregar Participante</h2>
 
               <div className="space-y-4">
@@ -288,7 +275,7 @@ function App() {
                     {selectedNumbers.map(number => (
                       <span
                         key={number}
-                        className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium"
+                        className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium"
                       >
                         {formatNumber(number)}
                       </span>
@@ -328,15 +315,15 @@ function App() {
 
               {/* Participants List */}
               {participants.length > 0 && (
-                <div className="mt-6">
+                <div className="mt-6 flex-1 flex flex-col min-h-0">
                   <h3 className="text-lg font-semibold text-gray-800 mb-3">Participantes</h3>
-                  <div className="max-h-64 overflow-y-auto space-y-2">
+                  <div className="overflow-y-auto pr-1 space-y-2 custom-scrollbar flex-1"
+                       style={{ maxHeight: 'calc(100% - 2rem)' }}>
                     {participants.map((participant, index) => (
                       <div key={index} className="bg-gray-50 p-3 rounded-lg">
                         <div className="flex items-center gap-2 mb-1">
                           <div
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: participant.color }}
+                            className="w-3 h-3 rounded-full bg-green-500"
                           ></div>
                           <span className="font-medium text-gray-800">{participant.name}</span>
                         </div>
@@ -376,7 +363,7 @@ function App() {
                         ${getNumberStyle(number)}
                         ${occupiedNumbers.has(number) ? 'cursor-not-allowed' : 'cursor-pointer'}
                       `}
-                      style={participant ? { backgroundColor: participant.color } : {}}
+                      style={occupiedNumbers.has(number) ? { backgroundColor: '#10B981' } : {}}
                       title={participant ? `${formatNumber(number)} - ${participant.name}` : `Número ${formatNumber(number)}`}
                     >
                       {formatNumber(number)}
@@ -391,11 +378,11 @@ function App() {
                   <span>Disponible</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-blue-500 border-2 border-blue-600 rounded"></div>
+                  <div className="w-4 h-4 bg-green-500 border-2 border-green-600 rounded"></div>
                   <span>Seleccionado</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-gray-400 border-2 border-gray-500 rounded"></div>
+                  <div className="w-4 h-4 bg-green-500 border-2 border-green-600 rounded"></div>
                   <span>Ocupado</span>
                 </div>
               </div>
