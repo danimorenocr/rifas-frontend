@@ -21,7 +21,7 @@ function App() {
   const [occupiedNumbers, setOccupiedNumbers] = useState<Map<number, Participant>>(new Map());
   const tableRef = useRef<HTMLDivElement>(null);
 
-  const API_URL = "http://localhost:4000"; // 👉 cámbialo cuando lo despliegues
+  const API_URL = "https://rifas-backend-ts0z.onrender.com"; // 👉 cámbialo cuando lo despliegues
 
   const generateNumbers = () => {
     const numbers = [];
@@ -102,7 +102,30 @@ function App() {
 
   // 🔹 Reset desde backend
   const resetRifa = async () => {
-    if (participants.length > 0 && !confirm('¿Estás seguro de que quieres reiniciar la rifa?')) {
+    // Si no hay participantes, no es necesaria confirmación adicional
+    if (participants.length === 0) {
+      try {
+        const response = await fetch(`${API_URL}/reset`, { method: "DELETE" });
+        if (response.ok) {
+          await fetchParticipants();
+          setSelectedNumbers([]);
+          setCurrentName('');
+        }
+      } catch (error) {
+        console.error("Error reiniciando rifa:", error);
+      }
+      return;
+    }
+    
+    // Primera confirmación con diálogo estándar
+    if (!confirm('¿Estás seguro de que quieres reiniciar la rifa? Todos los participantes y números serán eliminados.')) {
+      return;
+    }
+    
+    // Segunda confirmación con texto específico
+    const confirmationText = prompt('Para confirmar, escribe exactamente: "deseo reiniciar la rifa"');
+    if (confirmationText?.toLowerCase() !== 'deseo reiniciar la rifa') {
+      alert('Operación cancelada: El texto de confirmación no coincide.');
       return;
     }
 
@@ -112,9 +135,13 @@ function App() {
         await fetchParticipants();
         setSelectedNumbers([]);
         setCurrentName('');
+        alert('La rifa ha sido reiniciada correctamente.');
+      } else {
+        alert('Error al reiniciar la rifa. Inténtalo de nuevo.');
       }
     } catch (error) {
       console.error("Error reiniciando rifa:", error);
+      alert('Error de conexión al reiniciar la rifa.');
     }
   };
 
@@ -122,19 +149,63 @@ function App() {
     if (!tableRef.current) return;
 
     try {
-      const canvas = await html2canvas(tableRef.current, {
+      // Crear un clon del elemento para modificarlo sin afectar la UI
+      const clonedTable = tableRef.current.cloneNode(true) as HTMLElement;
+      document.body.appendChild(clonedTable);
+      
+      // Aplicar estilos al clon para formato horizontal
+      clonedTable.style.position = 'absolute';
+      clonedTable.style.left = '-9999px';
+      clonedTable.style.width = '1800px';
+      
+      // Ajustar grid y tamaño de números
+      const gridElement = clonedTable.querySelector('.grid');
+      if (gridElement) {
+        (gridElement as HTMLElement).style.display = 'grid';
+        (gridElement as HTMLElement).style.gridTemplateColumns = 'repeat(20, minmax(0, 1fr))';
+        
+        // Aumentar tamaño de los números
+        const numberButtons = gridElement.querySelectorAll('button');
+        numberButtons.forEach(button => {
+          (button as HTMLElement).style.fontSize = '16px';
+          (button as HTMLElement).style.fontWeight = 'bold';
+          (button as HTMLElement).style.width = '42px';
+          (button as HTMLElement).style.height = '42px';
+        });
+      }
+
+      // Generar canvas con las opciones optimizadas
+      const canvas = await html2canvas(clonedTable, {
         backgroundColor: '#ffffff',
         scale: 2,
         useCORS: true,
+        logging: false,
+        allowTaint: true,
+        windowWidth: 1920,
+        windowHeight: 1080
       });
+      
+      // Eliminar el clon después de procesarlo
+      document.body.removeChild(clonedTable);
 
+      // Convertir a PNG con calidad máxima
+      const imgData = canvas.toDataURL('image/png', 1.0);
+      
+      // Descargar usando Blob para mayor fiabilidad
+      const blob = await (await fetch(imgData)).blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
       const link = document.createElement('a');
       link.download = `rifa-${new Date().toISOString().split('T')[0]}.png`;
-      link.href = canvas.toDataURL();
+      link.href = blobUrl;
       link.click();
+      
+      // Liberar memoria
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+      
     } catch (error) {
       console.error('Error al exportar:', error);
-      alert('Error al exportar la imagen. Inténtalo de nuevo.');
+      alert('Error al exportar la imagen: ' + (error instanceof Error ? error.message : 'Error desconocido'));
     }
   };
 
@@ -301,7 +372,7 @@ function App() {
                       onClick={() => handleNumberClick(number)}
                       disabled={occupiedNumbers.has(number)}
                       className={`
-                        aspect-square text-xs font-medium border-2 rounded-md transition-all duration-200 transform hover:scale-105
+                        aspect-square text-sm font-medium border-2 rounded-md transition-all duration-200 transform hover:scale-105
                         ${getNumberStyle(number)}
                         ${occupiedNumbers.has(number) ? 'cursor-not-allowed' : 'cursor-pointer'}
                       `}
